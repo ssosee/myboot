@@ -29,21 +29,23 @@ public class MybootApplication {
          * web client <--> servlet container(front controller) <--> hello controller
          */
 
-        GenericWebApplicationContext applicationContext = new GenericWebApplicationContext();
+        GenericWebApplicationContext applicationContext = new GenericWebApplicationContext() {
+            @Override
+            protected void onRefresh() {
+                super.onRefresh();
+
+                ServletWebServerFactory serverFactory = new TomcatServletWebServerFactory();
+                WebServer webServer = serverFactory.getWebServer(servletContext -> {
+                    servletContext.addServlet("dispatcherServlet",
+                            new DispatcherServlet(this)
+                    ).addMapping("/*");
+                });
+                webServer.start();
+
+            }
+        };
         applicationContext.registerBean(HelloController.class);
         applicationContext.registerBean(SimpleHelloService.class);
-        applicationContext.refresh();
-
-
-        ServletWebServerFactory serverFactory = new TomcatServletWebServerFactory();
-        WebServer webServer = serverFactory.getWebServer(new ServletContextInitializer() {
-            @Override
-            public void onStartup(ServletContext servletContext) throws ServletException {
-                servletContext.addServlet("dispatcherServlet",
-                        new DispatcherServlet(applicationContext)
-                ).addMapping("/*");
-            }
-        });
-        webServer.start();
+        applicationContext.refresh(); // 스프링 컨테이너의 초기화 작업 실행
     }
 }
